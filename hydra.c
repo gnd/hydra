@@ -104,9 +104,38 @@ static size_t SonyCallback(void *contents, size_t size, size_t nmemb, void *user
             SaveJPEG(mem);
         }
 
+				// OpenGL rendering
+				glUseProgram(mem->program);
+				if (mem->use_sony)
+				{
+						LoadJPEG(&mem->memory[136], &mem->jpeg_dec, mem->jpeg_size);
+						glUniform1i(mem->sony_uniform, mem->sony_texture_unit);
+						glActiveTexture(GL_TEXTURE0 + mem->sony_texture_unit);
+						glBindTexture(GL_TEXTURE_2D, mem->sony_texture_name);
+						glTexImage2D(GL_TEXTURE_2D,
+												 0,
+												 (GLint)mem->displaydata.internal_format,
+												 mem->displaydata.texture_width, mem->displaydata.texture_height,
+												 0,
+												 (GLenum)mem->displaydata.pixelformat,
+												 GL_UNSIGNED_BYTE,
+												 mem->jpeg_dec.data);
+				}
+				else
+				{
+						// black screen
+						glBindTexture(GL_TEXTURE_2D, 0);
+				}
+				glBindBuffer(GL_ARRAY_BUFFER, mem->array_buffer_fullscene_quad);
+				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+				glFlush();
+				CHECK_GL();
+				glfwSwapBuffers(mem->window);
+
         // TODO: fix this
         // exit with an error to close connection
-        return realsize - 1;
+				mem->size = 0;
+        return realsize;
     }
     return realsize;
 }
@@ -199,12 +228,20 @@ int Hydra_Construct(Hydra *hy)
     hy->mem.jpeg_size    = 0;
     hy->mem.save         = 0;
     // extension by jpeg_dec
-    hy->mem.jpeg_dec_x        = 0;
-    hy->mem.jpeg_dec_y        = 0;
-    hy->mem.jpeg_dec_bpp      = 0;
-    hy->mem.jpeg_dec_data     = NULL;
-    hy->mem.jpeg_dec_size     = 0;
-    hy->mem.jpeg_dec_channels = 0;
+    hy->mem.jpeg_dec.x        = 0;
+    hy->mem.jpeg_dec.y        = 0;
+    hy->mem.jpeg_dec.bpp      = 0;
+    hy->mem.jpeg_dec.data     = NULL;
+    hy->mem.jpeg_dec.size     = 0;
+    hy->mem.jpeg_dec.channels = 0;
+		// extension by OpenGL
+		hy->mem.use_sony         = 1;
+		hy->mem.array_buffer_fullscene_quad = 0;
+		hy->mem.program           = 0;
+		hy->mem.sony_uniform      = 0;
+		hy->mem.sony_texture_name = 0;
+		hy->mem.sony_texture_unit = 0;
+
 
     hy->use_sony         = 1;
     hy->freeze_frame     = 0;
@@ -231,6 +268,16 @@ int Hydra_Construct(Hydra *hy)
     hy->displaydata.bytes_per_pixel = 2;                                                                                       // int 2 for YUV422
     hy->displaydata.internal_format = (GLint)GL_RGB;
     hy->displaydata.pixelformat     = (GLenum)GL_RGB;
+
+		// displaydata - mem extension
+    memset(&hy->mem.displaydata, 0, sizeof(hy->mem.displaydata));
+    hy->mem.displaydata.window_width    = 640;
+    hy->mem.displaydata.window_height   = 360;
+    hy->mem.displaydata.texture_width   = 640;
+    hy->mem.displaydata.texture_height  = 360;
+    hy->mem.displaydata.bytes_per_pixel = 2;                                                                                       // int 2 for YUV422
+    hy->mem.displaydata.internal_format = (GLint)GL_RGB;
+    hy->mem.displaydata.pixelformat     = (GLenum)GL_RGB;
 
     // setup libcurl
     curl_global_init(CURL_GLOBAL_ALL);
@@ -324,7 +371,7 @@ void close_callback(GLFWwindow *window)
 
 void GetSourceSize(Hydra *hy, int *width, int *height)
 {
-    glfwGetWindowSize(hy->window, width, height);
+    glfwGetWindowSize(hy->mem.window, width, height);
 }
 
 
@@ -393,22 +440,22 @@ void SetupViewport(Hydra *hy)
     }
 
     // Create a window
-    hy->window = glfwCreateWindow(hy->viewport.x, hy->viewport.y, "hydra", NULL, NULL);
-    if (!hy->window)
+    hy->mem.window = glfwCreateWindow(hy->viewport.x, hy->viewport.y, "hydra", NULL, NULL);
+    if (!hy->mem.window)
     {
         glfwTerminate();
         handleError("GLFW create window failed", -1);
     }
     // Fix DPI
-    hy->viewport.x *= fixDpiScale(hy->window);
-    hy->viewport.y *= fixDpiScale(hy->window);
-    glfwSetWindowSize(hy->window, hy->viewport.x, hy->viewport.y);
-    glfwSetWindowPos(hy->window, 0, 0);
+    hy->viewport.x *= fixDpiScale(hy->mem.window);
+    hy->viewport.y *= fixDpiScale(hy->mem.window);
+    glfwSetWindowSize(hy->mem.window, hy->viewport.x, hy->viewport.y);
+    glfwSetWindowPos(hy->mem.window, 0, 0);
     glViewport(0.0, 0.0, hy->viewport.x, hy->viewport.y);
-    glfwMakeContextCurrent(hy->window);
-    glfwSetKeyCallback(hy->window, key_callback);
-    glfwSetWindowSizeCallback(hy->window, resize_callback);
-    glfwSetWindowCloseCallback(hy->window, close_callback);
+    glfwMakeContextCurrent(hy->mem.window);
+    glfwSetKeyCallback(hy->mem.window, key_callback);
+    glfwSetWindowSizeCallback(hy->mem.window, resize_callback);
+    glfwSetWindowCloseCallback(hy->mem.window, close_callback);
     glfwSwapInterval(1);
     CHECK_GL();
 }
@@ -449,8 +496,8 @@ static int Hydra_SetupShaders(Hydra *hy)
     glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
     glDisable(GL_SAMPLE_COVERAGE);
 
-    glGenBuffers(1, &hy->array_buffer_fullscene_quad);
-    glBindBuffer(GL_ARRAY_BUFFER, hy->array_buffer_fullscene_quad);
+    glGenBuffers(1, &hy->mem.array_buffer_fullscene_quad);
+    glBindBuffer(GL_ARRAY_BUFFER, hy->mem.array_buffer_fullscene_quad);
     glBufferData(GL_ARRAY_BUFFER, sizeof(fullscene_quad),
                  fullscene_quad, GL_STATIC_DRAW);
     CHECK_GL();
@@ -478,22 +525,22 @@ static int Hydra_SetupShaders(Hydra *hy)
     }
     CHECK_GL();
 
-    hy->program = glCreateProgram();
-    glAttachShader(hy->program, hy->vertex_shader);
-    glAttachShader(hy->program, hy->fragment_shader);
-    glLinkProgram(hy->program);
-    glGetProgramiv(hy->program, GL_LINK_STATUS, &param);
+    hy->mem.program = glCreateProgram();
+    glAttachShader(hy->mem.program, hy->vertex_shader);
+    glAttachShader(hy->mem.program, hy->fragment_shader);
+    glLinkProgram(hy->mem.program);
+    glGetProgramiv(hy->mem.program, GL_LINK_STATUS, &param);
     if (param != GL_TRUE)
     {
-        PrintProgramLog("program", hy->program);
+        PrintProgramLog("program", hy->mem.program);
         return 3;
     }
-    glUseProgram(hy->program);
+    glUseProgram(hy->mem.program);
     CHECK_GL();
 
-    hy->resolution   = glGetUniformLocation(hy->program, "resolution");
-    hy->sony_uniform = glGetUniformLocation(hy->program, "sony");
-    vc_location      = glGetAttribLocation(hy->program, "vertex_coord");
+    hy->resolution   = glGetUniformLocation(hy->mem.program, "resolution");
+    hy->mem.sony_uniform = glGetUniformLocation(hy->mem.program, "sony");
+    vc_location      = glGetAttribLocation(hy->mem.program, "vertex_coord");
     glEnableVertexAttribArray(vc_location);
     glVertexAttribPointer(vc_location,
                           4,
@@ -503,11 +550,11 @@ static int Hydra_SetupShaders(Hydra *hy)
                           NULL);
     CHECK_GL();
 
-    if (hy->use_sony)
+    if (hy->mem.use_sony)
     {
         glGenTextures(1, hy->textures);
-        hy->sony_texture_name = hy->textures[0];
-        glBindTexture(GL_TEXTURE_2D, hy->sony_texture_name);
+        hy->mem.sony_texture_name = hy->textures[0];
+        glBindTexture(GL_TEXTURE_2D, hy->mem.sony_texture_name);
         glTexImage2D(GL_TEXTURE_2D,
                      0,
                      (GLint)hy->displaydata.internal_format,
@@ -581,7 +628,7 @@ void SetUniforms(Hydra *hy)
     int width, height;
 
     GetSourceSize(hy, &width, &height);
-    glUseProgram(hy->program);
+    glUseProgram(hy->mem.program);
     glUniform2f(hy->resolution, (double)width, (double)height);
     CHECK_GL();
 }
@@ -589,62 +636,9 @@ void SetUniforms(Hydra *hy)
 
 static void Hydra_Render(Hydra *hy)
 {
-    double render_time, sony_time;
+     // we make sure this finishes after one frame
+     curl_easy_perform(hy->curl_handle);
 
-    if (hy->show_render_time)
-    {
-        render_time = GetCurrentTimeInMilliSecond();
-    }
-
-    glUseProgram(hy->program);
-    if (hy->use_sony)
-    {
-        if (!hy->freeze_frame)
-        {
-            hy->mem.size = 0;
-        }
-
-        if (hy->show_render_time)
-        {
-            sony_time = GetCurrentTimeInMilliSecond();
-        }
-
-        // we make sure this finishes after one frame
-        curl_easy_perform(hy->curl_handle);
-        LoadJPEG(&hy->mem.memory[136], &hy->jpeg_dec, hy->mem.jpeg_size);
-        if (hy->show_render_time)
-        {
-            sony_time = GetCurrentTimeInMilliSecond() - sony_time;
-        }
-
-        glUniform1i(hy->sony_uniform, hy->sony_texture_unit);
-        glActiveTexture(GL_TEXTURE0 + hy->sony_texture_unit);
-        glBindTexture(GL_TEXTURE_2D, hy->sony_texture_name);
-
-        glTexImage2D(GL_TEXTURE_2D,
-                     0,
-                     (GLint)hy->displaydata.internal_format,
-                     hy->displaydata.texture_width, hy->displaydata.texture_height,
-                     0,
-                     (GLenum)hy->displaydata.pixelformat,
-                     GL_UNSIGNED_BYTE,
-                     hy->jpeg_dec.data);
-    }
-    else
-    {
-        // black screen
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
-    glBindBuffer(GL_ARRAY_BUFFER, hy->array_buffer_fullscene_quad);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    glFlush();
-    CHECK_GL();
-    glfwSwapBuffers(hy->window);
-    if (hy->show_render_time)
-    {
-        render_time = GetCurrentTimeInMilliSecond() - render_time;
-        printf("Render time: %.1f ms (%.0f fps). Sony time:  %.1f ms (%.0f fps)  \r", render_time, 1000.0 / render_time, sony_time, 1000.0 / sony_time);
-    }
 }
 
 
@@ -652,8 +646,8 @@ void ProcessKeys(Hydra *hy)
 {
     if (c_pressed)
     {
-        hy->use_sony ^= 1;
-        if (hy->use_sony == 1)
+        hy->mem.use_sony ^= 1;
+        if (hy->mem.use_sony == 1)
         {
             printf("Cam on.\n");
         }
@@ -720,7 +714,7 @@ static void PrintHelp(void)
 
 static void Hydra_MainLoop(Hydra *hy)
 {
-    while (!glfwWindowShouldClose(hy->window))
+    while (!glfwWindowShouldClose(hy->mem.window))
     {
         switch (getchar())
         {
@@ -751,8 +745,8 @@ static void Hydra_MainLoop(Hydra *hy)
         // Sony on / off
         case 'C':
         case 'c':
-            hy->use_sony ^= 1;
-            if (hy->use_sony == 1)
+            hy->mem.use_sony ^= 1;
+            if (hy->mem.use_sony == 1)
             {
                 printf("Cam on.\n");
             }
@@ -793,7 +787,8 @@ static void Hydra_MainLoop(Hydra *hy)
             break;
         }
     }
-goal:
+		goal:
+			return;
 }
 
 
@@ -808,22 +803,22 @@ int Hydra_Main(Hydra *hy)
 void Hydra_Destruct(Hydra *hy)
 {
     printf("\nExiting.\n");
-    hy->use_sony = 0;
-    glDeleteProgram(hy->program);
-    hy->program = 0;
+    hy->mem.use_sony = 0;
+    glDeleteProgram(hy->mem.program);
+    hy->mem.program = 0;
     glDeleteShader(hy->fragment_shader);
     hy->fragment_shader = 0;
     glDeleteShader(hy->vertex_shader);
     hy->vertex_shader = 0;
-    glDeleteBuffers(1, &hy->array_buffer_fullscene_quad);
-    hy->array_buffer_fullscene_quad = 0;
-    glDeleteTextures(1, &hy->sony_texture_name);
-    hy->sony_texture_name = 0;
+    glDeleteBuffers(1, &hy->mem.array_buffer_fullscene_quad);
+    hy->mem.array_buffer_fullscene_quad = 0;
+    glDeleteTextures(1, &hy->mem.sony_texture_name);
+    hy->mem.sony_texture_name = 0;
     curl_easy_cleanup(hy->curl_handle);
     curl_global_cleanup();
     free(hy->mem.memory);
     free(hy->mem.size_string);
-    glfwDestroyWindow(hy->window);
+    glfwDestroyWindow(hy->mem.window);
     glfwTerminate();
 }
 

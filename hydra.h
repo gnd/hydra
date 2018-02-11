@@ -23,33 +23,6 @@
 
 typedef struct Hydra_ Hydra;
 
-typedef struct JpegMemory_s {
-								unsigned char *memory;
-								char *size_string;
-								size_t size;
-								size_t jpeg_size;
-								int save;
-								bool header_found;
-
-								//jpegdec extension
-								unsigned long jpeg_dec_x;
-								unsigned long jpeg_dec_y;
-								unsigned short int jpeg_dec_bpp;     // bits per pixels
-								unsigned char* jpeg_dec_data;        // the data of the image
-								unsigned long jpeg_dec_size;         // length of the file
-								int jpeg_dec_channels;               // the channels of the image 3 = RGA 4 = RGBA
-
-} JpegMemory_t;
-
-typedef struct JpegDec_s {
-								unsigned long x;
-								unsigned long y;
-								unsigned short int bpp;           // bits per pixels
-								unsigned char* data;              // the data of the image
-								unsigned long size;               // length of the file
-								int channels;                     // the channels of the image 3 = RGA 4 = RGBA
-} JpegDec_t;
-
 typedef struct displaydata {
 								int window_id; /* id of the display window  */
 								int window_width; /* in pixels  */
@@ -60,6 +33,42 @@ typedef struct displaydata {
 								int internal_format; /* of the texture data  */
 								int pixelformat;/* of the texture pixels  */
 } Displaydata_t;
+
+typedef struct JpegDec_s {
+								unsigned long x;
+								unsigned long y;
+								unsigned short int bpp;           // bits per pixels
+								unsigned char* data;              // the data of the image
+								unsigned long size;               // length of the file
+								int channels;                     // the channels of the image 3 = RGA 4 = RGBA
+} JpegDec_t;
+
+typedef struct JpegMemory_s {
+								unsigned char *memory;
+								char *size_string;
+								size_t size;
+								size_t jpeg_size;
+								int save;
+								bool header_found;
+
+								// jpegdec extension
+								JpegDec_t jpeg_dec;
+
+								// opengl extension
+								GLFWwindow* window;
+								int use_sony;
+								GLuint array_buffer_fullscene_quad;
+								GLuint program;
+								Displaydata_t displaydata;
+								GLuint sony_uniform;
+								GLuint sony_texture_name;
+								GLuint sony_texture_unit;
+
+} JpegMemory_t;
+
+
+
+
 
 typedef enum {
 								LAYOUT_PRIMARY_FULLSCREEN,
