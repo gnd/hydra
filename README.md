@@ -1,7 +1,7 @@
 # hydra
 OpenGL Sony Action Cam HDR-AS30 viewer and recorder
 
-## Usage
+# usage
 Hydra uses libcurl to connect and download image data over Wifi from a Sony Action Cam. 
 Just connect to the Action Cam and launch Hydra.
 
@@ -25,7 +25,7 @@ You can use these commands during runtime:
   
 ```
 
-## Installation
+# installation
 
 ```
 apt-get install libjpeg-dev libcurl4-openssl-dev libglfw3-dev
