@@ -8,10 +8,10 @@ Just connect to the Action Cam and launch Hydra.
 ```
 usage: hydra [options]
 options:
-    --primary-fs                     create a fullscreen window on primary monitor
-    --primary-res [WidthxHeight]     create a width x height window on primary monitor (default: 800x600)
-    --secondary-fs                   create a fullscreen window on secondary monitor
-    --secondary-res [WidthxHeight]   create a width x height window on secondary monitor
+  --primary-fs                     create a fullscreen window on primary monitor
+  --primary-res [WidthxHeight]     create a width x height window on primary monitor (default: 800x600)
+  --secondary-fs                   create a fullscreen window on secondary monitor
+  --secondary-res [WidthxHeight]   create a width x height window on secondary monitor
 
 ```
 You can use these commands during runtime: 
