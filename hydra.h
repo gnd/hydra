@@ -41,17 +41,6 @@ typedef struct JpegDec_s {
 								int channels;                     // the channels of the image 3 = RGA 4 = RGBA
 } JpegDec_t;
 
-typedef struct displaydata {
-								int window_id; /* id of the display window  */
-								int window_width; /* in pixels  */
-								int window_height; /* in pixels  */
-								int texture_width; /* may be window_width or next larger power of two  */
-								int texture_height;/* may be window_height or next larger power of two  */
-								int bytes_per_pixel; /* of the texture   */
-								int internal_format; /* of the texture data  */
-								int pixelformat;/* of the texture pixels  */
-} Displaydata_t;
-
 typedef enum {
 								LAYOUT_PRIMARY_FULLSCREEN,
 								LAYOUT_PRIMARY_RESOLUTION,
@@ -94,6 +83,11 @@ struct Hydra_ {
 								GLuint sony_uniform;
 								GLuint sony_texture_name;
 								GLuint sony_texture_unit;
+								int texture_width;
+								int texture_height;
+								int bytes_per_pixel;                                                                                       // int 2 for YUV422
+						 		GLint internal_format;
+								GLenum pixelformat;
 };
 
 size_t Hydra_InstanceSize(void);
