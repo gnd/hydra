@@ -30,15 +30,6 @@ typedef struct JpegMemory_s {
 								size_t jpeg_size;
 								int save;
 								bool header_found;
-
-								//jpegdec extension
-								unsigned long jpeg_dec_x;
-								unsigned long jpeg_dec_y;
-								unsigned short int jpeg_dec_bpp;     // bits per pixels
-								unsigned char* jpeg_dec_data;        // the data of the image
-								unsigned long jpeg_dec_size;         // length of the file
-								int jpeg_dec_channels;               // the channels of the image 3 = RGA 4 = RGBA
-
 } JpegMemory_t;
 
 typedef struct JpegDec_s {

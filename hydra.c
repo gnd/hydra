@@ -1,6 +1,5 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
-#include <pthread.h>
 #include <time.h>
 #include <sys/time.h>
 #include <errno.h>
@@ -45,10 +44,9 @@ static void CheckGLError(const char *file, int line, const char *func)
         printf("  OpenGL|ES raise: code 0x%04x (?)\n", e);
     }
 }
-
-
 #endif
 
+# some globals
 int c_pressed      = 0;
 int s_pressed      = 0;
 int t_pressed      = 0;
