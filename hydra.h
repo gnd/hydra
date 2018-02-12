@@ -24,12 +24,14 @@
 typedef struct Hydra_ Hydra;
 
 typedef struct JpegMemory_s {
+								CURL *curl_handle;
 								unsigned char *memory;
 								char *size_string;
 								size_t size;
 								size_t jpeg_size;
 								int save;
 								bool header_found;
+								pthread_mutex_t mutex;
 } JpegMemory_t;
 
 typedef struct JpegDec_s {
@@ -54,10 +56,9 @@ struct MemoryStruct {
 };
 
 struct Hydra_ {
-								JpegMemory_t mem;
-								JpegDec_t jpeg_dec;
-								struct MemoryStruct chunk;
 								CURL *curl_handle;
+								pthread_t thread;
+								bool thread_running;
 								int is_fullscreen;
 								int use_sony;
 								int freeze_frame;
