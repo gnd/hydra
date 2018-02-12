@@ -79,7 +79,6 @@ struct Hydra_ {
 								GLuint vertex_shader;
 								GLuint program;
 								GLuint resolution;
-								Displaydata_t displaydata;
 								GLuint sony_uniform;
 								GLuint sony_texture_name;
 								GLuint sony_texture_unit;

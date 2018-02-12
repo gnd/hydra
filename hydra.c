@@ -615,7 +615,7 @@ static void Hydra_Render(Hydra *hy)
                      hy->internal_format,
                      hy->texture_width, hy->texture_height,
                      0,
-                     hy->.pixelformat,
+                     hy->pixelformat,
                      GL_UNSIGNED_BYTE,
                      hy->jpeg_dec.data);
     }
