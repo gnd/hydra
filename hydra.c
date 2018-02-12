@@ -6,6 +6,8 @@
 #include <errno.h>
 #include "hydra.h"
 
+// TODO: Threading
+
 #ifdef NDEBUG
 # define CHECK_GL()
 #else
@@ -104,7 +106,6 @@ static size_t SonyCallback(void *contents, size_t size, size_t nmemb, void *user
             SaveJPEG(mem);
         }
 
-        // TODO: fix this
         // exit with an error to close connection
         return realsize - 1;
     }
