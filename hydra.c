@@ -199,13 +199,6 @@ int Hydra_Construct(Hydra *hy)
     hy->mem.size_string  = malloc(6);
     hy->mem.jpeg_size    = 0;
     hy->mem.save         = 0;
-    // extension by jpeg_dec
-    hy->mem.jpeg_dec_x        = 0;
-    hy->mem.jpeg_dec_y        = 0;
-    hy->mem.jpeg_dec_bpp      = 0;
-    hy->mem.jpeg_dec_data     = NULL;
-    hy->mem.jpeg_dec_size     = 0;
-    hy->mem.jpeg_dec_channels = 0;
 
     hy->use_sony         = 1;
     hy->freeze_frame     = 0;
@@ -794,7 +787,8 @@ static void Hydra_MainLoop(Hydra *hy)
             break;
         }
     }
-goal:
+    goal:
+      return;
 }
 
 
