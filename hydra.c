@@ -46,7 +46,7 @@ static void CheckGLError(const char *file, int line, const char *func)
 }
 #endif
 
-# some globals
+// some globals
 int c_pressed      = 0;
 int s_pressed      = 0;
 int t_pressed      = 0;
@@ -196,13 +196,6 @@ int Hydra_Construct(Hydra *hy)
     hy->mem.size_string  = malloc(6);
     hy->mem.jpeg_size    = 0;
     hy->mem.save         = 0;
-    // extension by jpeg_dec
-    hy->mem.jpeg_dec_x        = 0;
-    hy->mem.jpeg_dec_y        = 0;
-    hy->mem.jpeg_dec_bpp      = 0;
-    hy->mem.jpeg_dec_data     = NULL;
-    hy->mem.jpeg_dec_size     = 0;
-    hy->mem.jpeg_dec_channels = 0;
 
     hy->use_sony         = 1;
     hy->freeze_frame     = 0;
@@ -219,16 +212,11 @@ int Hydra_Construct(Hydra *hy)
     hy->sony_uniform      = 0;
     hy->sony_texture_name = 0;
     hy->sony_texture_unit = 0;
-
-    // displaydata
-    memset(&hy->displaydata, 0, sizeof(hy->displaydata));
-    hy->displaydata.window_width    = 640;
-    hy->displaydata.window_height   = 360;
-    hy->displaydata.texture_width   = 640;
-    hy->displaydata.texture_height  = 360;
-    hy->displaydata.bytes_per_pixel = 2;                                                                                       // int 2 for YUV422
-    hy->displaydata.internal_format = (GLint)GL_RGB;
-    hy->displaydata.pixelformat     = (GLenum)GL_RGB;
+    hy->texture_width   = 640;
+    hy->texture_height  = 360;
+    hy->bytes_per_pixel = 2;                                                                                       // int 2 for YUV422
+    hy->internal_format = (GLint)GL_RGB;
+    hy->pixelformat     = (GLenum)GL_RGB;
 
     // setup libcurl
     curl_global_init(CURL_GLOBAL_ALL);
@@ -508,10 +496,10 @@ static int Hydra_SetupShaders(Hydra *hy)
         glBindTexture(GL_TEXTURE_2D, hy->sony_texture_name);
         glTexImage2D(GL_TEXTURE_2D,
                      0,
-                     (GLint)hy->displaydata.internal_format,
-                     hy->displaydata.texture_width, hy->displaydata.texture_height,
+                     hy->internal_format,
+                     hy->texture_width, hy->texture_height,
                      0,
-                     (GLenum)hy->displaydata.pixelformat,
+                     hy->pixelformat,
                      GL_UNSIGNED_BYTE,
                      NULL);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -621,10 +609,10 @@ static void Hydra_Render(Hydra *hy)
 
         glTexImage2D(GL_TEXTURE_2D,
                      0,
-                     (GLint)hy->displaydata.internal_format,
-                     hy->displaydata.texture_width, hy->displaydata.texture_height,
+                     hy->internal_format,
+                     hy->texture_width, hy->texture_height,
                      0,
-                     (GLenum)hy->displaydata.pixelformat,
+                     hy->pixelformat,
                      GL_UNSIGNED_BYTE,
                      hy->jpeg_dec.data);
     }
@@ -791,7 +779,8 @@ static void Hydra_MainLoop(Hydra *hy)
             break;
         }
     }
-goal:
+    goal:
+      return;
 }
 
 
