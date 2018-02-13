@@ -1,5 +1,5 @@
 # hydra
-OpenGL Sony Action Cam HDR-AS30 viewer and recorder
+Linux-based OpenGL Sony Action Cam HDR-AS30 viewer and recorder
 
 # usage
 Hydra uses libcurl to connect and download image data over Wifi from a Sony Action Cam. 
