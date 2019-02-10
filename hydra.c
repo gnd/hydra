@@ -201,7 +201,7 @@ size_t Hydra_InstanceSize(void)
 int Hydra_Construct(Hydra *hy)
 {
     char* lv = getenv("CAM_LV");
-    char* padd = "/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!";
+    const char* padd = "/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!";
     char* flv = malloc(strlen(lv) + strlen(padd) + 1);
     strcpy(flv, lv);
     strcat(flv, padd);
