@@ -147,9 +147,9 @@ void LoadJPEG(const unsigned char *imgdata, JpegDec_t *jpeg_dec, size_t jpeg_siz
 
 void SaveJPEG(JpegMemory_t *mem)
 {
-    char filename[16];
-
-    sprintf(filename, "sony_%05d.jpeg", picture_number);
+    char filename[255];
+    char* slv = getenv("SAVE_LV");
+    sprintf(filename, slv, picture_number);
     FILE *f = fopen(filename, "w");
     if (f == NULL)
     {
@@ -200,6 +200,12 @@ size_t Hydra_InstanceSize(void)
 
 int Hydra_Construct(Hydra *hy)
 {
+    char* lv = getenv("CAM_LV");
+    char* padd = "/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!";
+    char* flv = malloc(strlen(lv) + strlen(padd) + 1);
+    strcpy(flv, lv);
+    strcat(flv, padd);
+
     hy->use_sony         = 1;
     hy->freeze_frame     = 0;
     hy->show_render_time = 0;
@@ -240,10 +246,10 @@ int Hydra_Construct(Hydra *hy)
 
     pthread_mutex_init(&video_mutex, NULL);
 
-  // setup libcurl
+    // setup libcurl
     curl_global_init(CURL_GLOBAL_ALL);
     mem.curl_handle  = curl_easy_init();
-    curl_easy_setopt(mem.curl_handle, CURLOPT_URL, "http://192.168.122.1:60152/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!");
+    curl_easy_setopt(mem.curl_handle, CURLOPT_URL, flv);
 
     return 0;
 }

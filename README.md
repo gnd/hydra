@@ -1,5 +1,5 @@
 # hydra
-Linux-based OpenGL Sony Action Cam HDR-AS30 viewer and recorder
+Linux-based OpenGL Sony Action Cam HDR-AS30 viewer and recorder (tested on HX50 too)
 
 # usage
 Hydra uses libcurl to connect and download image data over Wi-Fi from a Sony Action Cam.
@@ -33,6 +33,10 @@ git clone https://github.com/gnd/hydra.git
 cd hydra
 make
 ```
+
+Export liveview path for ex.: `export CAM_LV="http://10.0.0.1:60152"`
+
+Export save folder path for ex.: `export SAVE_LV="/mnt/LV/sony_%05d.jpeg"` 
 
 ###
 Inspired by https://github.com/erik-smit/sony-camera-api/blob/master/liveView.py
