@@ -1,6 +1,5 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
-#include <pthread.h>
 #include <time.h>
 #include <sys/time.h>
 #include <errno.h>
@@ -201,7 +200,6 @@ size_t Hydra_InstanceSize(void)
 
 int Hydra_Construct(Hydra *hy)
 {
-    hy->thread_running   = FALSE;
     hy->use_sony         = 1;
     hy->freeze_frame     = 0;
     hy->show_render_time = 0;
@@ -242,7 +240,7 @@ int Hydra_Construct(Hydra *hy)
 
     pthread_mutex_init(&video_mutex, NULL);
 
-    // setup libcurl
+  // setup libcurl
     curl_global_init(CURL_GLOBAL_ALL);
     mem.curl_handle  = curl_easy_init();
     curl_easy_setopt(mem.curl_handle, CURLOPT_URL, "http://192.168.122.1:60152/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!");
