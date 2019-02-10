@@ -164,7 +164,6 @@ void SaveJPEG(JpegMemory_t *mem)
 
 
 void *getJpegData(void *memory) {
-    printf("entering getjpegdata\n");
     JpegMemory_t *mem = (JpegMemory_t *)memory;
 
     curl_easy_setopt(mem->curl_handle, CURLOPT_NOSIGNAL, 1);
@@ -535,8 +534,6 @@ static int Hydra_SetupShaders(Hydra *hy)
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
     }
     CHECK_GL();
-
-    printf("Setup done\n");
 
     return 0;
 }
