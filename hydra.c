@@ -5,6 +5,18 @@
 #include <errno.h>
 #include "hydra.h"
 
+// some globals
+JpegMemory_t mem;
+JpegDec_t jpeg_dec;
+int c_pressed      = 0;
+int s_pressed      = 0;
+int t_pressed      = 0;
+int space_pressed  = 0;
+int picture_number = 0;
+pthread_mutex_t video_mutex;
+
+// TODO: Threading
+
 #ifdef NDEBUG
 # define CHECK_GL()
 #else
@@ -45,14 +57,6 @@ static void CheckGLError(const char *file, int line, const char *func)
     }
 }
 #endif
-
-// some globals
-int c_pressed      = 0;
-int s_pressed      = 0;
-int t_pressed      = 0;
-int space_pressed  = 0;
-int picture_number = 0;
-
 
 void handleError(const char *message, int _exitStatus)
 {
@@ -97,14 +101,12 @@ static size_t SonyCallback(void *contents, size_t size, size_t nmemb, void *user
     // read the jpeg data
     if ((mem->size >= 136 + mem->jpeg_size) && mem->header_found)
     {
-        if (mem->save)
-        {
-            SaveJPEG(mem);
-        }
-
-        // TODO: fix this
-        // exit with an error to close connection
-        return realsize - 1;
+        // Lock mem and read data
+        pthread_mutex_lock(&video_mutex);
+        LoadJPEG(&mem->memory[136], &jpeg_dec, mem->jpeg_size);
+        pthread_mutex_unlock(&video_mutex);
+        mem->size = 0;
+        return realsize;
     }
     return realsize;
 }
@@ -161,6 +163,23 @@ void SaveJPEG(JpegMemory_t *mem)
 }
 
 
+void *getJpegData(void *memory) {
+    printf("entering getjpegdata\n");
+    JpegMemory_t *mem = (JpegMemory_t *)memory;
+
+    curl_easy_setopt(mem->curl_handle, CURLOPT_NOSIGNAL, 1);
+    curl_easy_setopt(mem->curl_handle, CURLOPT_WRITEFUNCTION, SonyCallback);
+    curl_easy_setopt(mem->curl_handle, CURLOPT_WRITEDATA, mem);
+    curl_easy_perform(mem->curl_handle);
+    curl_easy_cleanup(mem->curl_handle);
+    curl_global_cleanup();
+
+    printf("exiting getjpegdata\n");
+    // make gcc happy
+    return 0;
+}
+
+
 void ShowUsage(void)
 {
     printf("usage: hydra [options]\n");
@@ -181,22 +200,6 @@ size_t Hydra_InstanceSize(void)
 
 int Hydra_Construct(Hydra *hy)
 {
-    memset(&hy->jpeg_dec, 0, sizeof(hy->jpeg_dec));
-    hy->jpeg_dec.x        = 0;
-    hy->jpeg_dec.y        = 0;
-    hy->jpeg_dec.bpp      = 0;
-    hy->jpeg_dec.data     = NULL;
-    hy->jpeg_dec.size     = 0;
-    hy->jpeg_dec.channels = 0;
-
-    memset(&hy->mem, 0, sizeof(hy->mem));
-    hy->mem.memory       = malloc(1);
-    hy->mem.size         = 0;
-    hy->mem.header_found = false;
-    hy->mem.size_string  = malloc(6);
-    hy->mem.jpeg_size    = 0;
-    hy->mem.save         = 0;
-
     hy->use_sony         = 1;
     hy->freeze_frame     = 0;
     hy->show_render_time = 0;
@@ -218,12 +221,29 @@ int Hydra_Construct(Hydra *hy)
     hy->internal_format = (GLint)GL_RGB;
     hy->pixelformat     = (GLenum)GL_RGB;
 
-    // setup libcurl
+    // take care of shared memory
+    memset(&jpeg_dec, 0, sizeof(jpeg_dec));
+    jpeg_dec.x        = 0;
+    jpeg_dec.y        = 0;
+    jpeg_dec.bpp      = 0;
+    jpeg_dec.data     = NULL;
+    jpeg_dec.size     = 0;
+    jpeg_dec.channels = 0;
+
+    memset(&mem, 0, sizeof(mem));
+    mem.memory       = malloc(1);
+    mem.size         = 0;
+    mem.header_found = false;
+    mem.size_string  = malloc(6);
+    mem.jpeg_size    = 0;
+    mem.save         = 0;
+
+    pthread_mutex_init(&video_mutex, NULL);
+
+  // setup libcurl
     curl_global_init(CURL_GLOBAL_ALL);
-    hy->curl_handle = curl_easy_init();
-    curl_easy_setopt(hy->curl_handle, CURLOPT_URL, "http://192.168.122.1:60152/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!");
-    curl_easy_setopt(hy->curl_handle, CURLOPT_WRITEFUNCTION, SonyCallback);
-    curl_easy_setopt(hy->curl_handle, CURLOPT_WRITEDATA, &hy->mem);
+    mem.curl_handle  = curl_easy_init();
+    curl_easy_setopt(mem.curl_handle, CURLOPT_URL, "http://192.168.122.1:60152/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!");
 
     return 0;
 }
@@ -510,6 +530,8 @@ static int Hydra_SetupShaders(Hydra *hy)
     }
     CHECK_GL();
 
+    printf("Setup done\n");
+
     return 0;
 }
 
@@ -585,19 +607,18 @@ static void Hydra_Render(Hydra *hy)
     glUseProgram(hy->program);
     if (hy->use_sony)
     {
+
+        // TODO solve freeze frame (dont overwrite memory)
         if (!hy->freeze_frame)
         {
-            hy->mem.size = 0;
         }
 
+        // TODO correctyl measure sony time
         if (hy->show_render_time)
         {
             sony_time = GetCurrentTimeInMilliSecond();
         }
 
-        // we make sure this finishes after one frame
-        curl_easy_perform(hy->curl_handle);
-        LoadJPEG(&hy->mem.memory[136], &hy->jpeg_dec, hy->mem.jpeg_size);
         if (hy->show_render_time)
         {
             sony_time = GetCurrentTimeInMilliSecond() - sony_time;
@@ -607,6 +628,7 @@ static void Hydra_Render(Hydra *hy)
         glActiveTexture(GL_TEXTURE0 + hy->sony_texture_unit);
         glBindTexture(GL_TEXTURE_2D, hy->sony_texture_name);
 
+        pthread_mutex_lock(&video_mutex);
         glTexImage2D(GL_TEXTURE_2D,
                      0,
                      hy->internal_format,
@@ -614,7 +636,8 @@ static void Hydra_Render(Hydra *hy)
                      0,
                      hy->pixelformat,
                      GL_UNSIGNED_BYTE,
-                     hy->jpeg_dec.data);
+                     jpeg_dec.data);
+        pthread_mutex_unlock(&video_mutex);
     }
     else
     {
@@ -651,8 +674,9 @@ void ProcessKeys(Hydra *hy)
     }
     if (s_pressed)
     {
-        hy->mem.save ^= 1;
-        if (hy->mem.save == 1)
+        // TODO - solve saving
+        mem.save ^= 1;
+        if (mem.save == 1)
         {
             printf("Saving enabled.\n");
         }
@@ -751,8 +775,8 @@ static void Hydra_MainLoop(Hydra *hy)
         // Save JPEG on / off
         case 'S':
         case 's':
-            hy->mem.save ^= 1;
-            if (hy->mem.save == 1)
+            mem.save ^= 1;
+            if (mem.save == 1)
             {
                 printf("Saving enabled.\n");
             }
@@ -786,6 +810,7 @@ static void Hydra_MainLoop(Hydra *hy)
 
 int Hydra_Main(Hydra *hy)
 {
+    pthread_create(&hy->thread, NULL, &getJpegData, &mem);
     Hydra_SetupShaders(hy);
     Hydra_MainLoop(hy);
     return EXIT_SUCCESS;
@@ -808,8 +833,8 @@ void Hydra_Destruct(Hydra *hy)
     hy->sony_texture_name = 0;
     curl_easy_cleanup(hy->curl_handle);
     curl_global_cleanup();
-    free(hy->mem.memory);
-    free(hy->mem.size_string);
+    free(mem.memory);
+    free(mem.size_string);
     glfwDestroyWindow(hy->window);
     glfwTerminate();
 }

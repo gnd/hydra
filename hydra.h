@@ -24,6 +24,7 @@
 typedef struct Hydra_ Hydra;
 
 typedef struct JpegMemory_s {
+								CURL *curl_handle;
 								unsigned char *memory;
 								char *size_string;
 								size_t size;
@@ -54,10 +55,9 @@ struct MemoryStruct {
 };
 
 struct Hydra_ {
-								JpegMemory_t mem;
-								JpegDec_t jpeg_dec;
-								struct MemoryStruct chunk;
 								CURL *curl_handle;
+								pthread_t thread;
+								bool thread_running;
 								int is_fullscreen;
 								int use_sony;
 								int freeze_frame;
@@ -68,8 +68,8 @@ struct Hydra_ {
 								// the GL part
 								GLFWwindow* window;
 								struct {
-																int x;
-																int y;
+									int x;
+									int y;
 								} viewport;
 								LAYOUT layout;
 								GLuint textures[1];
@@ -85,7 +85,7 @@ struct Hydra_ {
 								int texture_width;
 								int texture_height;
 								int bytes_per_pixel;                                                                                       // int 2 for YUV422
-								GLint internal_format;
+						 		GLint internal_format;
 								GLenum pixelformat;
 };
 
