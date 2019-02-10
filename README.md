@@ -6,7 +6,12 @@ Hydra uses libcurl to connect and download image data over Wi-Fi from a Sony Act
 Just connect to the Action Cam over Wi-Fi and launch Hydra.
 
 ```
-usage: hydra [options]
+usage:
+export CAM_LV=http://192.168.122.1:60152 (for Sony HDR-AS30) or
+export CAM_LV="http://10.0.0.1:60152" (for Sony HX50)
+(optional) Export save folder path for ex.: `export SAVE_LV="/mnt/LV/sony_%05d.jpeg"`
+hydra [options]
+
 options:
   --primary-fs                     create a fullscreen window on primary monitor
   --primary-res [WidthxHeight]     create a width x height window on primary monitor (default: 800x600)
@@ -33,10 +38,6 @@ git clone https://github.com/gnd/hydra.git
 cd hydra
 make
 ```
-
-Export liveview path for ex.: `export CAM_LV="http://10.0.0.1:60152"`
-
-Export save folder path for ex.: `export SAVE_LV="/mnt/LV/sony_%05d.jpeg"` 
 
 ###
 Inspired by https://github.com/erik-smit/sony-camera-api/blob/master/liveView.py
