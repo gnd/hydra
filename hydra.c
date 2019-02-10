@@ -685,7 +685,6 @@ void ProcessKeys(Hydra *hy)
     }
     if (s_pressed)
     {
-        // TODO - solve saving
         mem.save ^= 1;
         if (mem.save == 1)
         {
