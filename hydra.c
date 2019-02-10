@@ -105,6 +105,14 @@ static size_t SonyCallback(void *contents, size_t size, size_t nmemb, void *user
         pthread_mutex_lock(&video_mutex);
         LoadJPEG(&mem->memory[136], &jpeg_dec, mem->jpeg_size);
         pthread_mutex_unlock(&video_mutex);
+
+        // if we want to save the data, do it now
+        if (mem->save)
+        {
+            SaveJPEG(mem);
+        }
+
+        // start loading another image
         mem->size = 0;
         return realsize;
     }

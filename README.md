@@ -24,7 +24,7 @@ You can use these commands during runtime:
 ```
   spacebar              freeze frame (broken)
   c                     sony on/off
-  s                     save jpeg on/off (broken)
+  s                     save jpeg on/off
   t                     FPS printing
   q, ctrl+c, esc,       exit
 
