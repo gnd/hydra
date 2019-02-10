@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <jerror.h>
 #include <assert.h>
+#include <pthread.h>
 #include <jpeglib.h>
 #include <stdbool.h>
 #include <termios.h>
