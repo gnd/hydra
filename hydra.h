@@ -31,7 +31,6 @@ typedef struct JpegMemory_s {
 								size_t jpeg_size;
 								int save;
 								bool header_found;
-								pthread_mutex_t mutex;
 } JpegMemory_t;
 
 typedef struct JpegDec_s {
@@ -69,8 +68,8 @@ struct Hydra_ {
 								// the GL part
 								GLFWwindow* window;
 								struct {
-																int x;
-																int y;
+									int x;
+									int y;
 								} viewport;
 								LAYOUT layout;
 								GLuint textures[1];
