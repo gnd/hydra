@@ -14,8 +14,10 @@ int t_pressed      = 0;
 int space_pressed  = 0;
 int picture_number = 0;
 pthread_mutex_t video_mutex;
-
-// TODO: Threading
+double sony_fetch_time = 0;
+double sony_fetch_time_temp = 0;
+bool measuring_sony = false;
+bool show_render_time = false;
 
 #ifdef NDEBUG
 # define CHECK_GL()
@@ -79,6 +81,12 @@ static size_t SonyCallback(void *contents, size_t size, size_t nmemb, void *user
     size_t       realsize = size * nmemb;
     JpegMemory_t *mem     = (JpegMemory_t *)userp;
 
+    if (show_render_time && !(measuring_sony))
+    {
+        sony_fetch_time_temp = GetCurrentTimeInMilliSecond();
+        measuring_sony = true;
+    }
+
     mem->memory = realloc(mem->memory, mem->size + realsize + 1);
     if (mem->memory == NULL)
     {
@@ -112,6 +120,13 @@ static size_t SonyCallback(void *contents, size_t size, size_t nmemb, void *user
             SaveJPEG(mem);
         }
 
+        // if we measure time taken to fetch the image data
+        if (show_render_time)
+        {
+            sony_fetch_time = GetCurrentTimeInMilliSecond() - sony_fetch_time_temp;
+            measuring_sony = false;
+        }
+
         // start loading another image
         mem->size = 0;
         return realsize;
@@ -130,9 +145,10 @@ void LoadJPEG(const unsigned char *imgdata, JpegDec_t *jpeg_dec, size_t jpeg_siz
     jpeg_mem_src(&info, imgdata, jpeg_size);
     jpeg_read_header(&info, TRUE);
     info.do_fancy_upsampling = FALSE;
+    // Free previous jpeg_dec memory (if any)
+    free(jpeg_dec->data);
 
     jpeg_start_decompress(&info);
-
     jpeg_dec->x        = info.output_width;
     jpeg_dec->y        = info.output_height;
     jpeg_dec->channels = info.num_components;
@@ -143,7 +159,6 @@ void LoadJPEG(const unsigned char *imgdata, JpegDec_t *jpeg_dec, size_t jpeg_siz
     unsigned char *p1      = jpeg_dec->data;
     unsigned char **p2     = &p1;
     int           numlines = 0;
-
     while (info.output_scanline < info.output_height)
     {
         numlines = jpeg_read_scanlines(&info, p2, 1);
@@ -215,8 +230,6 @@ int Hydra_Construct(Hydra *hy)
 
     hy->use_sony         = 1;
     hy->freeze_frame     = 0;
-    hy->show_render_time = 0;
-
     hy->viewport.x = 0;
     hy->viewport.y = 0;
     hy->array_buffer_fullscene_quad = 0;
@@ -608,9 +621,9 @@ void SetUniforms(Hydra *hy)
 
 static void Hydra_Render(Hydra *hy)
 {
-    double render_time, sony_time;
+    double render_time;
 
-    if (hy->show_render_time)
+    if (show_render_time)
     {
         render_time = GetCurrentTimeInMilliSecond();
     }
@@ -622,17 +635,6 @@ static void Hydra_Render(Hydra *hy)
         // TODO solve freeze frame (dont overwrite memory)
         if (!hy->freeze_frame)
         {
-        }
-
-        // TODO correctyl measure sony time
-        if (hy->show_render_time)
-        {
-            sony_time = GetCurrentTimeInMilliSecond();
-        }
-
-        if (hy->show_render_time)
-        {
-            sony_time = GetCurrentTimeInMilliSecond() - sony_time;
         }
 
         glUniform1i(hy->sony_uniform, hy->sony_texture_unit);
@@ -660,10 +662,10 @@ static void Hydra_Render(Hydra *hy)
     glFlush();
     CHECK_GL();
     glfwSwapBuffers(hy->window);
-    if (hy->show_render_time)
+    if (show_render_time)
     {
         render_time = GetCurrentTimeInMilliSecond() - render_time;
-        printf("Render time: %.1f ms (%.0f fps). Sony time:  %.1f ms (%.0f fps)  \r", render_time, 1000.0 / render_time, sony_time, 1000.0 / sony_time);
+        printf("Render time: %.1f ms (%.0f fps). Sony time:  %.1f ms (%.0f fps)  \r", render_time, 1000.0 / render_time, sony_fetch_time, 1000.0 / sony_fetch_time);
     }
 }
 
@@ -698,7 +700,7 @@ void ProcessKeys(Hydra *hy)
     }
     if (t_pressed)
     {
-        hy->show_render_time ^= 1;
+        show_render_time ^= 1;
         t_pressed             = 0;
     }
     if (space_pressed)
@@ -799,7 +801,7 @@ static void Hydra_MainLoop(Hydra *hy)
         // Shows render time
         case 'T':
         case 't':
-            hy->show_render_time ^= 1;
+            show_render_time ^= 1;
             break;
 
         case '?':
