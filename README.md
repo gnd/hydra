@@ -22,7 +22,6 @@ Saving options:
   --save-file filename             filename to save frames in the form: name_%0d.jpeg
                                    %0d stands for number of digits, eg. my_%06d.jpeg
                                    will be saved as my_000001.jpeg, my_000002.jpeg, etc..
-
 ```
 You can use these commands during runtime:
 
@@ -32,7 +31,6 @@ You can use these commands during runtime:
   s                     save jpeg on/off
   t                     FPS printing
   q, ctrl+c, esc,       exit
-
 ```
 
 # installation
