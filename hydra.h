@@ -17,6 +17,9 @@
 #include <curl/curl.h>
 #include <GLFW/glfw3.h>
 
+// TODO clean this up - remove unused structs
+// TODO cleanup - remove CURL handle from hy ? 
+
 #define USE_TERMIOS
 #define GL_GLEXT_PROTOTYPES
 #define STATIC_ASSERT(cond) { extern int __static_assert[(cond) ? 1 : -1]; }

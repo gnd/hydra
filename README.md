@@ -10,9 +10,9 @@ usage:
 hydra [options]
 
 Cam options:
-  --cam [type]                     provide cam type (currently only hx50 and as30 (default))\n");
-  --cam-link [link]                overrides the cam type and sets the remote location directly\n");
-                                   use without http://, eg. --cam-link 10.0.0.1:60152\n");
+  --cam [type]                     provide cam type (currently only hx50 and as30 (default))
+  --cam-link [link]                overrides the cam type and sets the remote location directly
+                                   use without http://, eg. --cam-link 10.0.0.1:60152
 
 Display options:
   --primary-fs                     create a fullscreen window on primary monitor
