@@ -9,7 +9,6 @@ Just connect to the Action Cam over Wi-Fi and launch Hydra.
 usage:
 export CAM_LV=http://192.168.122.1:60152 (for Sony HDR-AS30) or
 export CAM_LV="http://10.0.0.1:60152" (for Sony HX50)
-(optional) Export save folder path for ex.: `export SAVE_LV="/mnt/LV/sony_%05d.jpeg"`
 hydra [options]
 
 options:

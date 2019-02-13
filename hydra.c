@@ -170,9 +170,12 @@ void LoadJPEG(const unsigned char *imgdata, JpegDec_t *jpeg_dec, size_t jpeg_siz
 
 void SaveJPEG(JpegMemory_t *mem)
 {
-    char filename[255];
-    char* slv = getenv("SAVE_LV");
-    sprintf(filename, slv, picture_number);
+    //TODO make this safe by checking if the format is ok (%0Nd)
+    //TODO malloc filename according to the N in format
+    char filename[500];
+    sprintf(filename, mem->savename, picture_number);
+    printf("Saving %s\n", filename);
+
     FILE *f = fopen(filename, "w");
     if (f == NULL)
     {
@@ -196,7 +199,6 @@ void *getJpegData(void *memory) {
     curl_easy_cleanup(mem->curl_handle);
     curl_global_cleanup();
 
-    printf("exiting getjpegdata\n");
     // make gcc happy
     return 0;
 }
@@ -205,11 +207,18 @@ void *getJpegData(void *memory) {
 void ShowUsage(void)
 {
     printf("usage: hydra [options]\n");
-    printf("options:\n");
+    printf("\n");
+    printf("Display options:\n");
     printf("    --primary-fs                            create a fullscreen window on primary monitor\n");
     printf("    --primary-res [WidthxHeight]            create a width x height window on primary monitor (default: 800x600)\n");
     printf("    --secondary-fs                          create a fullscreen window on secondary monitor\n");
     printf("    --secondary-res [WidthxHeight]          create a width x height window on secondary monitor\n");
+    printf("\n");
+    printf("Saving options:\n");
+    printf("    --save-dir dir                          directory where to save frames\n");
+    printf("    --save-file filename                    filename to save frames in the form: name_%%0d.jpeg\n");
+    printf("                                            %%0d stands for number of digits, eg. my_%%06d.jpeg\n");
+    printf("                                            will be saved as my_000001.jpeg, my_000002.jpeg, etc..\n");
     printf("\n");
 }
 
@@ -222,6 +231,7 @@ size_t Hydra_InstanceSize(void)
 
 int Hydra_Construct(Hydra *hy)
 {
+    // TODO make this into a runtime parameter
     char* lv = getenv("CAM_LV");
     const char* padd = "/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!";
     char* flv = malloc(strlen(lv) + strlen(padd) + 1);
@@ -246,6 +256,8 @@ int Hydra_Construct(Hydra *hy)
     hy->bytes_per_pixel = 2;                                                                                       // int 2 for YUV422
     hy->internal_format = (GLint)GL_RGB;
     hy->pixelformat     = (GLenum)GL_RGB;
+    hy->dirpath         = NULL;
+    hy->filename        = NULL;
 
     // take care of shared memory
     memset(&jpeg_dec, 0, sizeof(jpeg_dec));
@@ -263,6 +275,7 @@ int Hydra_Construct(Hydra *hy)
     mem.size_string  = malloc(6);
     mem.jpeg_size    = 0;
     mem.save         = 0;
+    mem.savename     = NULL;
 
     pthread_mutex_init(&video_mutex, NULL);
 
@@ -300,6 +313,45 @@ void SetLayout(Hydra *hy, LAYOUT layout, int width, int height) // flatten
     hy->viewport.y = height;
 }
 
+void SetSaveDir(Hydra *hy, char *dirpath)
+{
+    hy->dirpath = malloc(strlen(dirpath) + 1);
+    strcpy(hy->dirpath, dirpath);
+}
+
+void SetSaveFile(Hydra *hy, char *filename)
+{
+    hy->filename = malloc(strlen(filename) + 1);
+    strcpy(hy->filename, filename);
+}
+
+void SetSaveDestination(Hydra *hy)
+{
+    if (hy->dirpath == NULL) {
+        if (hy->filename == NULL) {
+            // using default filename
+            mem.savename = malloc(strlen("sony_%05d.jpeg") + 1);
+            strcpy(mem.savename, "sony_%05d.jpeg");
+        } else {
+            mem.savename = malloc(strlen(hy->filename) + 1);
+            strcpy(mem.savename, hy->filename);
+        }
+    } else {
+        if (hy->filename == NULL) {
+            // using default filename
+            mem.savename = malloc(strlen(hy->dirpath) + strlen("sony_%05d.jpeg") + 2);
+            strcpy(mem.savename, hy->dirpath);
+            strcat(mem.savename, "/");
+            strcat(mem.savename, "sony_%05d.jpeg");
+        } else {
+            mem.savename = malloc(strlen(hy->dirpath) + strlen(hy->filename) + 2);
+            strcpy(mem.savename, hy->dirpath);
+            strcat(mem.savename, "/");
+            strcat(mem.savename, hy->filename);
+        }
+    }
+    printf("Files will be saved to: %s\n", mem.savename);
+}
 
 float fixDpiScale(GLFWwindow *window)
 {
@@ -423,7 +475,6 @@ void SetupViewport(Hydra *hy)
         }
         break;
     }
-
     // Create a window
     hy->window = glfwCreateWindow(hy->viewport.x, hy->viewport.y, "hydra", NULL, NULL);
     if (!hy->window)
@@ -555,7 +606,6 @@ static int Hydra_SetupShaders(Hydra *hy)
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
     }
     CHECK_GL();
-
     return 0;
 }
 
@@ -564,6 +614,7 @@ int Hydra_ParseArgs(Hydra *hy, int argc, const char *argv[])
 {
     int i;
     int width, height;
+    char dirpath[255], filename[255];
 
     for (i = 1; i < argc; i++)
     {
@@ -603,7 +654,51 @@ int Hydra_ParseArgs(Hydra *hy, int argc, const char *argv[])
             SetLayout(hy, LAYOUT_SECONDARY_RESOLUTION, width, height);
             continue;
         }
+        if (!strcmp(argv[i], "--save-dir"))
+        {
+            if (++i >= argc)
+            {
+                ShowUsage();
+            }
+            if (sscanf(argv[i], "%s", dirpath) < 1)
+            {
+                ShowUsage();
+            }
+
+            // remove trailing slash
+            if (dirpath[strlen(dirpath)-1] == '/') {
+                dirpath[strlen(dirpath)-1] = '\0';
+            }
+
+            // check if dir exists
+            struct stat stats;
+            stat(dirpath, &stats);
+            if (!S_ISDIR(stats.st_mode)) {
+                printf("Directory %s doesnt exist. Exiting\n", dirpath);
+                exit(1);
+            }
+
+            SetSaveDir(hy, dirpath);
+            continue;
+        }
+        if (!strcmp(argv[i], "--save-file"))
+        {
+            if (++i >= argc)
+            {
+                ShowUsage();
+            }
+            if (sscanf(argv[i], "%s", filename) < 1)
+            {
+                ShowUsage();
+            }
+            SetSaveFile(hy, filename);
+            continue;
+        }
     }
+
+    // Determine the final saving path + filename
+    SetSaveDestination(hy);
+
     return 0;
 }
 
@@ -732,7 +827,7 @@ static int Hydra_Update(Hydra *hy)
 static void PrintHelp(void)
 {
     printf("Key:\n");
-    printf("  spacebar        			freeze frame\n");
+    printf("  spacebar        		freeze frame\n");
     printf("  c                     sony on/off\n");
     printf("  s                     save jpeg on/off\n");
     printf("  t                     FPS printing\n");
@@ -843,10 +938,13 @@ void Hydra_Destruct(Hydra *hy)
     hy->array_buffer_fullscene_quad = 0;
     glDeleteTextures(1, &hy->sony_texture_name);
     hy->sony_texture_name = 0;
+    free(hy->dirpath);
+    free(hy->filename);
     curl_easy_cleanup(hy->curl_handle);
     curl_global_cleanup();
     free(mem.memory);
     free(mem.size_string);
+    free(mem.savename);
     glfwDestroyWindow(hy->window);
     glfwTerminate();
 }

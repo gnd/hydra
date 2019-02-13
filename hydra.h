@@ -32,6 +32,7 @@ typedef struct JpegMemory_s {
 								size_t jpeg_size;
 								int save;
 								bool header_found;
+								char* savename;
 } JpegMemory_t;
 
 typedef struct JpegDec_s {
@@ -88,6 +89,9 @@ struct Hydra_ {
 								int bytes_per_pixel;                                                                                       // int 2 for YUV422
 						 		GLint internal_format;
 								GLenum pixelformat;
+
+								char *dirpath;
+								char *filename;
 };
 
 size_t Hydra_InstanceSize(void);
