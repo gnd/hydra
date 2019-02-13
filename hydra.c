@@ -170,8 +170,6 @@ void LoadJPEG(const unsigned char *imgdata, JpegDec_t *jpeg_dec, size_t jpeg_siz
 
 void SaveJPEG(JpegMemory_t *mem)
 {
-    //TODO make this safe by checking if the format is ok (%0Nd)
-    //TODO malloc filename according to the N in format
     char filename[500];
     sprintf(filename, mem->savename, picture_number);
     printf("Saving %s\n", filename);
@@ -208,6 +206,11 @@ void ShowUsage(void)
 {
     printf("usage: hydra [options]\n");
     printf("\n");
+    printf("Cam options:\n");
+    printf("    --cam [type]                            provide cam type (currently only hx50 and as30 (default))\n");
+    printf("    --cam-link [link]                       overrides the cam type and sets the remote location directly\n");
+    printf("                                            use without http://, eg. --cam-link 10.0.0.1:60152\n");
+    printf("\n");
     printf("Display options:\n");
     printf("    --primary-fs                            create a fullscreen window on primary monitor\n");
     printf("    --primary-res [WidthxHeight]            create a width x height window on primary monitor (default: 800x600)\n");
@@ -215,8 +218,8 @@ void ShowUsage(void)
     printf("    --secondary-res [WidthxHeight]          create a width x height window on secondary monitor\n");
     printf("\n");
     printf("Saving options:\n");
-    printf("    --save-dir dir                          directory where to save frames\n");
-    printf("    --save-file filename                    filename to save frames in the form: name_%%0d.jpeg\n");
+    printf("    --save-dir [dir]                        directory where to save frames\n");
+    printf("    --save-file [filename]                  filename to save frames in the form: name_%%0d.jpeg\n");
     printf("                                            %%0d stands for number of digits, eg. my_%%06d.jpeg\n");
     printf("                                            will be saved as my_000001.jpeg, my_000002.jpeg, etc..\n");
     printf("\n");
@@ -231,13 +234,6 @@ size_t Hydra_InstanceSize(void)
 
 int Hydra_Construct(Hydra *hy)
 {
-    // TODO make this into a runtime parameter
-    char* lv = getenv("CAM_LV");
-    const char* padd = "/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!";
-    char* flv = malloc(strlen(lv) + strlen(padd) + 1);
-    strcpy(flv, lv);
-    strcat(flv, padd);
-
     hy->use_sony         = 1;
     hy->freeze_frame     = 0;
     hy->viewport.x = 0;
@@ -256,6 +252,8 @@ int Hydra_Construct(Hydra *hy)
     hy->bytes_per_pixel = 2;                                                                                       // int 2 for YUV422
     hy->internal_format = (GLint)GL_RGB;
     hy->pixelformat     = (GLenum)GL_RGB;
+    hy->camtype         = NULL;
+    hy->camlink         = NULL;
     hy->dirpath         = NULL;
     hy->filename        = NULL;
 
@@ -279,11 +277,6 @@ int Hydra_Construct(Hydra *hy)
 
     pthread_mutex_init(&video_mutex, NULL);
 
-    // setup libcurl
-    curl_global_init(CURL_GLOBAL_ALL);
-    mem.curl_handle  = curl_easy_init();
-    curl_easy_setopt(mem.curl_handle, CURLOPT_URL, flv);
-
     return 0;
 }
 
@@ -305,6 +298,46 @@ static void PrintProgramLog(const char *message, GLuint program)
     printf("%s %d: %s\n", message, program, build_log);
 }
 
+void SetCamType(Hydra *hy, char *cam)
+{
+    hy->camtype = malloc(strlen(cam) + 1);
+    strcpy(hy->camtype, cam);
+}
+
+bool CheckCamLinkSanity(char *camlink)
+{
+    long port = 0;
+    char *ip, *str;
+    str = malloc(strlen(camlink) + 1);
+    strcpy(str, camlink);
+    ip = strsep(&str, ":");
+    // check if camlink in form IP:PORT
+    if ((str != NULL) && (str[0] != '\0') && (ip[0] != '\0')) {
+        // check if port is integer
+        if (strspn(str, "0123456789") != strlen(str)) {
+            return false;
+        }
+        // check if port is sane
+        port = strtol(str, NULL, 10);
+        if ((port < 1) || (port > 65535)) {
+            return false;
+        }
+        // check if IP is sane
+        if (strspn(ip, "0123456789.") != strlen(ip)) {
+            return false;
+        }
+        // TODO finish the IP checks
+        } else {
+            return false;
+        }
+        return true;
+}
+
+void SetCamLink(Hydra *hy, char *camlink)
+{
+    hy->camlink = malloc(strlen(camlink) + 1);
+    strcpy(hy->camlink, camlink);
+}
 
 void SetLayout(Hydra *hy, LAYOUT layout, int width, int height) // flatten
 {
@@ -352,6 +385,52 @@ void SetSaveDestination(Hydra *hy)
     }
     printf("Files will be saved to: %s\n", mem.savename);
 }
+
+void SetCamPath(Hydra *hy)
+{
+    const char* camproto = "http://";
+    const char* camuri = "/liveview.JPG?!1234!http-get:*:image/jpeg:*!!!!!";
+    char *camlink;
+    char *tmp;
+
+    if (hy->camlink == NULL) {
+        if (hy->camtype == NULL) {
+            // Default to as30
+            camlink = malloc(strlen("http://192.168.122.1:60152") + 1);
+            strcpy(camlink, "http://192.168.122.1:60152");
+            hy->camlink = malloc(strlen(camlink) + strlen(camuri) + 1);
+            strcpy(hy->camlink, camlink);
+            strcat(hy->camlink, camuri);
+        } else if (strcmp(hy->camtype, "as30") == 0) {
+            camlink = malloc(strlen("http://192.168.122.1:60152") + 1);
+            strcpy(camlink, "http://192.168.122.1:60152");
+            hy->camlink = malloc(strlen(camlink) + strlen(camuri) + 1);
+            strcpy(hy->camlink, camlink);
+            strcat(hy->camlink, camuri);
+        } else if (strcmp(hy->camtype, "hx50") == 0) {
+            camlink = malloc(strlen("http://10.0.0.1:60152") + 1);
+            strcpy(camlink, "http://10.0.0.1:60152");
+            hy->camlink = malloc(strlen(camlink) + strlen(camuri) + 1);
+            strcpy(hy->camlink, camlink);
+            strcat(hy->camlink, camuri);
+        }
+    } else { //camlink overrides the camtype
+        camlink = malloc(strlen(camproto) + strlen(hy->camlink) +1);
+        strcpy(camlink, camproto);
+        strcat(camlink, hy->camlink);
+
+        tmp = malloc(strlen(camproto) + strlen(hy->camlink) + strlen(camuri) + 1);
+        strcpy(tmp, camproto);
+        strcat(tmp, hy->camlink);
+        strcat(tmp, camuri);
+
+        // replace hy->camlink with the complete link
+        hy->camlink = malloc(strlen(tmp) + 1);
+        strcpy(hy->camlink, tmp);
+    }
+    printf("Getting data from cam at: %s\n", camlink);
+}
+
 
 float fixDpiScale(GLFWwindow *window)
 {
@@ -614,10 +693,52 @@ int Hydra_ParseArgs(Hydra *hy, int argc, const char *argv[])
 {
     int i;
     int width, height;
-    char dirpath[255], filename[255];
+    char cam[255], camlink[255], dirpath[255], filename[255];
 
     for (i = 1; i < argc; i++)
     {
+        // TODO make this obsolete by using SSDP for camera discovery: https://github.com/zlargon/lssdp
+        if (!strcmp(argv[i], "--cam"))
+        {
+            if (++i >= argc)
+            {
+                ShowUsage();
+            }
+            if (sscanf(argv[i], "%s", cam) < 1)
+            {
+                ShowUsage();
+            }
+
+            // check if got either as30 or hx50
+            if ((strcmp(cam,"as30") != 0) && (strcmp(cam,"hx50") != 0)) {
+                printf("Currently only cams as30 and hx50 are supported.\n");
+                printf("If you need to access a different cam, try to specify --cam-link directly\n");
+                printf("Exiting.\n");
+                exit(1);
+            }
+            SetCamType(hy, cam);
+            continue;
+        }
+        if (!strcmp(argv[i], "--cam-link"))
+        {
+            if (++i >= argc)
+            {
+                ShowUsage();
+            }
+            if (sscanf(argv[i], "%s", camlink) < 1)
+            {
+                ShowUsage();
+            }
+
+            // check if camlink is sane
+            if (!CheckCamLinkSanity(camlink)) {
+                printf("Please provide --cam-link in the format IP:PORT. Exiting.\n");
+                exit(1);
+            };
+
+            SetCamLink(hy, camlink);
+            continue;
+        }
         if (!strcmp(argv[i], "--primary-fs"))
         {
             SetLayout(hy, LAYOUT_PRIMARY_FULLSCREEN, 0, 0);
@@ -691,10 +812,14 @@ int Hydra_ParseArgs(Hydra *hy, int argc, const char *argv[])
             {
                 ShowUsage();
             }
+
             SetSaveFile(hy, filename);
             continue;
         }
     }
+
+    // Determine the final remote path for the cam
+    SetCamPath(hy);
 
     // Determine the final saving path + filename
     SetSaveDestination(hy);
@@ -971,6 +1096,11 @@ int main(int argc, char *argv[])
         Hydra_Construct(hy);
         if (Hydra_ParseArgs(hy, argc, (const char **)argv) == 0)
         {
+            // setup libcurl
+            curl_global_init(CURL_GLOBAL_ALL);
+            mem.curl_handle  = curl_easy_init();
+            curl_easy_setopt(mem.curl_handle, CURLOPT_URL, hy->camlink);
+
             ret = Hydra_Main(hy);
         }
         Hydra_Destruct(hy);

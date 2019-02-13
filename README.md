@@ -7,9 +7,12 @@ Just connect to the Action Cam over Wi-Fi and launch Hydra.
 
 ```
 usage:
-export CAM_LV=http://192.168.122.1:60152 (for Sony HDR-AS30) or
-export CAM_LV="http://10.0.0.1:60152" (for Sony HX50)
 hydra [options]
+
+Cam options:
+  --cam [type]                     provide cam type (currently only hx50 and as30 (default))\n");
+  --cam-link [link]                overrides the cam type and sets the remote location directly\n");
+                                   use without http://, eg. --cam-link 10.0.0.1:60152\n");
 
 Display options:
   --primary-fs                     create a fullscreen window on primary monitor
@@ -18,8 +21,8 @@ Display options:
   --secondary-res [WidthxHeight]   create a width x height window on secondary monitor
 
 Saving options:
-  --save-dir dir                   directory where to save frames
-  --save-file filename             filename to save frames in the form: name_%0Nd.jpeg
+  --save-dir [dir]                 directory where to save frames
+  --save-file [filename]           filename to save frames in the form: name_%0Nd.jpeg
                                    %0Nd stands for number of digits, eg. my_%06d.jpeg
                                    will be saved as my_000001.jpeg, my_000002.jpeg, etc..
 ```

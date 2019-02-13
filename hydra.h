@@ -90,6 +90,8 @@ struct Hydra_ {
 						 		GLint internal_format;
 								GLenum pixelformat;
 
+								char *camtype;
+								char *camlink;
 								char *dirpath;
 								char *filename;
 };
