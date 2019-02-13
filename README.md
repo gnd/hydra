@@ -6,7 +6,7 @@ Hydra uses libcurl to connect and download image data over Wi-Fi from a Sony Act
 Just connect to the Action Cam over Wi-Fi and launch Hydra.
 
 ```
-usage: 
+usage:
 export CAM_LV=http://192.168.122.1:60152 (for Sony HDR-AS30) or
 export CAM_LV="http://10.0.0.1:60152" (for Sony HX50)
 hydra [options]
@@ -19,8 +19,8 @@ Display options:
 
 Saving options:
   --save-dir dir                   directory where to save frames
-  --save-file filename             filename to save frames in the form: name_%0d.jpeg
-                                   %0d stands for number of digits, eg. my_%06d.jpeg
+  --save-file filename             filename to save frames in the form: name_%0Nd.jpeg
+                                   %0Nd stands for number of digits, eg. my_%06d.jpeg
                                    will be saved as my_000001.jpeg, my_000002.jpeg, etc..
 ```
 You can use these commands during runtime:
