@@ -18,10 +18,10 @@ Display options:
   --secondary-res [WidthxHeight]   create a width x height window on secondary monitor
 
 Saving options:
-  --save-dir dir                    directory where to save frames
-  --save-file filename              filename to save frames in the form: name_%0d.jpeg
-                                    %0d stands for number of digits, eg. my_%06d.jpeg
-                                    will be saved as my_000001.jpeg, my_000002.jpeg, etc..
+  --save-dir dir                   directory where to save frames
+  --save-file filename             filename to save frames in the form: name_%0d.jpeg
+                                   %0d stands for number of digits, eg. my_%06d.jpeg
+                                   will be saved as my_000001.jpeg, my_000002.jpeg, etc..
 
 ```
 You can use these commands during runtime:
