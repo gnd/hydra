@@ -1,8 +1,6 @@
 # Hydra - Sony Action Cam viewer
-
-
 TARGET=hydra
-DEBUG=yes
+DEBUG=no
 CC=gcc
 
 CFLAGS =-Wall

@@ -802,7 +802,7 @@ int Hydra_ParseArgs(Hydra *hy, int argc, const char *argv[])
             SetSaveDir(hy, dirpath);
             continue;
         }
-        if (!strcmp(argv[i], "--save-file"))
+        if (!strcmp(argv[i], "--save-file")) // TODO exit on malformed filename
         {
             if (++i >= argc)
             {
@@ -1098,7 +1098,7 @@ int main(int argc, char *argv[])
         {
             // setup libcurl
             curl_global_init(CURL_GLOBAL_ALL);
-            mem.curl_handle  = curl_easy_init();
+            mem.curl_handle = curl_easy_init();
             curl_easy_setopt(mem.curl_handle, CURLOPT_URL, hy->camlink);
 
             ret = Hydra_Main(hy);
